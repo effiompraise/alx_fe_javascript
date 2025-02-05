@@ -1,7 +1,7 @@
 # alx_fe_javascript
 
 # Dynamic Quote Generator
-
+![dynamic-quote-generator](Quote-generator.png)
 ## Project Overview
 This is a comprehensive JavaScript web application that demonstrates advanced front-end development techniques, including:
 - Dynamic DOM manipulation
