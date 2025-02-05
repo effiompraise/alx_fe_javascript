@@ -278,7 +278,7 @@ let lastSyncTimestamp = 0;
 let syncConflicts = [];
 
 // Enhanced server synchronization function
-async function syncWithServer() {
+async function syncQuotes() {
     try {
         // Fetch current server data
         const response = await fetch(SERVER_URL);
@@ -438,10 +438,10 @@ function closeConflictModal() {
 // Initialize periodic synchronization
 function initServerSync() {
     // Initial sync
-    syncWithServer();
+    syncQuotes();
 
     // Periodic sync
-    setInterval(syncWithServer, SYNC_INTERVAL);
+    setInterval(syncQuotes, SYNC_INTERVAL);
 }
 
 // Modify DOMContentLoaded to include server sync
