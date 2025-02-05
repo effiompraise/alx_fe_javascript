@@ -451,3 +451,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add server sync initialization
     initServerSync();
 });
+
+async function postQuoteToServer(quote) {
+    try {
+        const response = await fetch(SERVER_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(quote)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to post quote: ${response.statusText}`);
+        }
+
+        console.log(`Quote posted successfully:`, await response.json());
+    } catch (error) {
+        console.error('Error posting quote:', error);
+    }
+}
