@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
     populateCategories();
     // Show initial random quote
     showRandomQuote();
+    // Create the add quote form dynamically
+    createAddQuoteForm();
 });
 
 // Function to load quotes from local storage
@@ -32,6 +34,27 @@ function saveQuotes() {
     populateCategories(); // Update categories after saving
 }
 
+// Dynamically create the add quote form
+function createAddQuoteForm() {
+    // Ensure we have a container for the form
+    let formContainer = document.querySelector('.quote-form');
+    if (!formContainer) {
+        formContainer = document.createElement('div');
+        formContainer.classList.add('quote-form');
+        document.querySelector('.container').appendChild(formContainer);
+    }
+
+    // Create form HTML dynamically
+    formContainer.innerHTML = `
+        <input id="newQuoteText" type="text" placeholder="Enter a new quote" />
+        <input id="newQuoteCategory" type="text" placeholder="Enter quote category" />
+        <button id="addQuoteButton">Add Quote</button>
+    `;
+
+    // Add event listener for adding quotes
+    document.getElementById('addQuoteButton').addEventListener('click', addQuote);
+}
+
 // Show a random quote, optionally filtered by category
 function showRandomQuote() {
     const categoryFilter = document.getElementById('categoryFilter').value;
@@ -49,16 +72,24 @@ function showRandomQuote() {
             </blockquote>
         `;
     } else {
-        alert('No quotes found in this category!');
+        const quoteDisplay = document.getElementById('quoteDisplay');
+        quoteDisplay.innerHTML = '<p>No quotes found in this category!</p>';
     }
 }
 
 // Add a new quote dynamically
 function addQuote() {
-    const quoteText = document.getElementById('newQuoteText').value;
-    const quoteCategory = document.getElementById('newQuoteCategory').value;
+    // Get input elements
+    const quoteTextInput = document.getElementById('newQuoteText');
+    const quoteCategoryInput = document.getElementById('newQuoteCategory');
 
+    // Extract values
+    const quoteText = quoteTextInput.value.trim();
+    const quoteCategory = quoteCategoryInput.value.trim();
+
+    // Validate input
     if (quoteText && quoteCategory) {
+        // Add new quote to quotes array
         quotes.push({ 
             text: quoteText, 
             category: quoteCategory 
@@ -68,8 +99,8 @@ function addQuote() {
         saveQuotes();
         
         // Clear input fields
-        document.getElementById('newQuoteText').value = '';
-        document.getElementById('newQuoteCategory').value = '';
+        quoteTextInput.value = '';
+        quoteCategoryInput.value = '';
         
         // Refresh quote display
         showRandomQuote();
@@ -81,6 +112,8 @@ function addQuote() {
 // Dynamically populate category dropdown
 function populateCategories() {
     const categoryFilter = document.getElementById('categoryFilter');
+    
+    // Extract unique categories
     const uniqueCategories = [...new Set(quotes.map(quote => quote.category))];
 
     // Clear existing options except 'All Categories'
@@ -99,7 +132,7 @@ function populateCategories() {
 
 // Filter quotes based on selected category
 function filterQuotes() {
-    // Already handled in showRandomQuote function
+    // Trigger quote refresh
     showRandomQuote();
 }
 
@@ -123,7 +156,7 @@ function importFromJsonFile(event) {
         try {
             const importedQuotes = JSON.parse(e.target.result);
             
-            // Optional: Add validation for imported quotes
+            // Validate imported quotes
             if (Array.isArray(importedQuotes)) {
                 quotes.push(...importedQuotes);
                 saveQuotes();
@@ -138,26 +171,3 @@ function importFromJsonFile(event) {
     };
     fileReader.readAsText(event.target.files[0]);
 }
-
-// Simulate server sync (periodic update)
-function syncWithServer() {
-    // Use fetch to simulate server interaction
-    fetch('https://jsonplaceholder.typicode.com/posts')
-        .then(response => response.json())
-        .then(data => {
-            // Convert server data to quote format
-            const serverQuotes = data.slice(0, 5).map(post => ({
-                text: post.title,
-                category: 'Server Import'
-            }));
-
-            // Merge server quotes
-            quotes.push(...serverQuotes);
-            saveQuotes();
-            showRandomQuote();
-        })
-        .catch(error => console.error('Server sync failed:', error));
-}
-
-// Periodic server sync every 5 minutes
-setInterval(syncWithServer, 5 * 60 * 1000);
