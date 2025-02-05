@@ -214,54 +214,59 @@ function importFromJsonFile(event) {
 
 // [All previous existing code remains UNCHANGED]
 
-// New function added at the end of the script
-function fetchQuotesFromServer() {
-    // Use JSONPlaceholder as a mock API for demonstration
+// New async function for fetching quotes from server
+async function fetchQuotesFromServer() {
+    // Define server endpoints to fetch quotes from
     const serverEndpoints = [
         'https://jsonplaceholder.typicode.com/posts',
         'https://jsonplaceholder.typicode.com/comments'
     ];
 
-    // Create an array to track fetch promises
-    const fetchPromises = serverEndpoints.map(endpoint => 
-        fetch(endpoint)
-            .then(response => {
-                // Check if the response is successful
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+    try {
+        // Use Promise.all with await to fetch from multiple endpoints concurrently
+        const fetchedDataSets = await Promise.all(
+            serverEndpoints.map(async (endpoint) => {
+                try {
+                    // Await the fetch and parse JSON
+                    const response = await fetch(endpoint);
+                    
+                    // Check if the response is successful
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    // Parse the JSON data
+                    const data = await response.json();
+                    
+                    // Transform server data into quote format
+                    return data.slice(0, 5).map(item => ({
+                        text: item.body || item.name, // Use body or name as quote text
+                        category: 'Server Import' // Static category for imported quotes
+                    }));
+                } catch (error) {
+                    // Log individual endpoint errors
+                    console.error(`Error fetching from ${endpoint}:`, error);
+                    return []; // Return empty array to prevent overall failure
                 }
-                return response.json();
             })
-            .then(data => {
-                // Transform server data into quote format
-                return data.slice(0, 5).map(item => ({
-                    text: item.body || item.name, // Use body or name as quote text
-                    category: 'Server Import' // Simple static category
-                }));
-            })
-            .catch(error => {
-                // Log any errors but don't break the application
-                console.error(`Error fetching quotes from ${endpoint}:`, error);
-                return []; // Return empty array to prevent promise rejection
-            })
-    );
+        );
 
-    // Process all fetch promises
-    Promise.all(fetchPromises)
-        .then(fetchedQuotesSets => {
-            // Flatten the array of quote sets
-            const newQuotes = fetchedQuotesSets.flat();
+        // Flatten the array of quote sets
+        const newQuotes = fetchedDataSets.flat();
+        
+        // Add fetched quotes to existing quotes
+        if (newQuotes.length > 0) {
+            quotes.push(...newQuotes);
             
-            // Add fetched quotes to existing quotes
-            if (newQuotes.length > 0) {
-                quotes.push(...newQuotes);
-                
-                // Save updated quotes
-                saveQuotes();
-                
-                // Refresh the quote display and categories
-                populateCategories();
-                showRandomQuote();
-            }
-        });
+            // Save updated quotes
+            saveQuotes();
+            
+            // Refresh the quote display and categories
+            populateCategories();
+            showRandomQuote();
+        }
+    } catch (error) {
+        // Handle any unexpected errors in the overall process
+        console.error('Failed to fetch quotes from servers:', error);
+    }
 }
