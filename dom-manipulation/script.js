@@ -270,3 +270,184 @@ async function fetchQuotesFromServer() {
         console.error('Failed to fetch quotes from servers:', error);
     }
 }
+
+// Global variables for server synchronization
+const SERVER_URL = 'https://jsonplaceholder.typicode.com/posts';
+const SYNC_INTERVAL = 60000; // 1 minute sync interval
+let lastSyncTimestamp = 0;
+let syncConflicts = [];
+
+// Enhanced server synchronization function
+async function syncWithServer() {
+    try {
+        // Fetch current server data
+        const response = await fetch(SERVER_URL);
+        if (!response.ok) {
+            throw new Error('Server sync failed');
+        }
+        const serverQuotes = await response.json();
+
+        // Transform server data to quote format
+        const transformedServerQuotes = serverQuotes.slice(0, 10).map(post => ({
+            id: post.id,
+            text: post.title,
+            category: 'Server Import',
+            timestamp: Date.now()
+        }));
+
+        // Conflict resolution logic
+        const resolvedQuotes = resolveQuoteConflicts(quotes, transformedServerQuotes);
+
+        // Update local quotes
+        quotes = resolvedQuotes;
+
+        // Save and refresh
+        saveQuotes();
+        populateCategories();
+        showRandomQuote();
+
+        // Update sync tracking
+        lastSyncTimestamp = Date.now();
+        displaySyncNotification('Quotes successfully synchronized');
+    } catch (error) {
+        console.error('Sync error:', error);
+        displaySyncNotification('Sync failed. Please check your connection.', 'error');
+    }
+}
+
+// Conflict resolution strategy
+function resolveQuoteConflicts(localQuotes, serverQuotes) {
+    // Clear previous conflicts
+    syncConflicts = [];
+
+    // Create maps for efficient lookup
+    const localQuoteMap = new Map(localQuotes.map(q => [q.id, q]));
+    const serverQuoteMap = new Map(serverQuotes.map(q => [q.id, q]));
+
+    // Merge quotes with server precedence
+    const mergedQuotes = [...localQuotes];
+
+    serverQuotes.forEach(serverQuote => {
+        const existingLocalQuote = localQuoteMap.get(serverQuote.id);
+
+        if (!existingLocalQuote) {
+            // New quote from server
+            mergedQuotes.push(serverQuote);
+        } else if (serverQuote.timestamp > existingLocalQuote.timestamp) {
+            // Server quote is newer - record conflict and replace
+            syncConflicts.push({
+                local: existingLocalQuote,
+                server: serverQuote
+            });
+
+            // Replace local quote with server quote
+            const index = mergedQuotes.indexOf(existingLocalQuote);
+            mergedQuotes[index] = serverQuote;
+        }
+    });
+
+    return mergedQuotes;
+}
+
+// Create a UI notification for sync events
+function displaySyncNotification(message, type = 'success') {
+    // Create notification element if it doesn't exist
+    let notificationContainer = document.getElementById('syncNotification');
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'syncNotification';
+        notificationContainer.classList.add('sync-notification');
+        document.querySelector('.container').prepend(notificationContainer);
+    }
+
+    // Set notification content and style
+    notificationContainer.textContent = message;
+    notificationContainer.className = `sync-notification ${type}`;
+
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        notificationContainer.textContent = '';
+    }, 3000);
+}
+
+// Manual conflict resolution
+function showConflictResolutionModal() {
+    if (syncConflicts.length === 0) {
+        alert('No conflicts to resolve');
+        return;
+    }
+
+    const modalContent = syncConflicts.map(conflict => `
+        <div class="conflict-item">
+            <h3>Conflict Detected</h3>
+            <div>
+                <strong>Local Quote:</strong> ${conflict.local.text}
+                <strong>Server Quote:</strong> ${conflict.server.text}
+            </div>
+            <button onclick="keepLocalQuote(${conflict.local.id})">Keep Local</button>
+            <button onclick="keepServerQuote(${conflict.server.id})">Keep Server</button>
+        </div>
+    `).join('');
+
+    // Create or update conflict resolution modal
+    let modal = document.getElementById('conflictModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'conflictModal';
+        modal.className = 'conflict-modal';
+        document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = modalContent;
+    modal.style.display = 'block';
+}
+
+// Conflict resolution handlers
+function keepLocalQuote(id) {
+    // Logic to keep local quote
+    syncConflicts = syncConflicts.filter(conflict => conflict.local.id !== id);
+    closeConflictModal();
+}
+
+function keepServerQuote(id) {
+    // Logic to keep server quote
+    const conflictIndex = syncConflicts.findIndex(conflict => conflict.server.id === id);
+    if (conflictIndex !== -1) {
+        const serverQuote = syncConflicts[conflictIndex].server;
+        
+        // Replace quote in main quotes array
+        const quoteIndex = quotes.findIndex(q => q.id === id);
+        if (quoteIndex !== -1) {
+            quotes[quoteIndex] = serverQuote;
+            saveQuotes();
+        }
+
+        syncConflicts.splice(conflictIndex, 1);
+    }
+    
+    closeConflictModal();
+}
+
+function closeConflictModal() {
+    const modal = document.getElementById('conflictModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Initialize periodic synchronization
+function initServerSync() {
+    // Initial sync
+    syncWithServer();
+
+    // Periodic sync
+    setInterval(syncWithServer, SYNC_INTERVAL);
+}
+
+// Modify DOMContentLoaded to include server sync
+document.addEventListener('DOMContentLoaded', () => {
+    // Previous initialization code...
+    
+    // Add server sync initialization
+    initServerSync();
+});
