@@ -308,7 +308,9 @@ async function syncQuotes() {
 
         // Update sync tracking
         lastSyncTimestamp = Date.now();
-        displaySyncNotification('Quotes successfully synchronized');
+
+        // Display success notification
+        displaySyncNotification('Quotes synced with server!'); // Add this line
     } catch (error) {
         console.error('Sync error:', error);
         displaySyncNotification('Sync failed. Please check your connection.', 'error');
